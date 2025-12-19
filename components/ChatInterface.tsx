@@ -196,12 +196,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
     
     try {
       if (inputMode === 'image-gen') {
-        const imageBase64 = await generateImage(text, chatSettings.imageAspectRatio);
+        // Variation logic: Append random seeds and modifiers to prompt to ensure model generates fresh variations
+        const variationModifiers = [
+          "cinematic masterwork", "highly intricate details", "unique perspective", 
+          "dramatic lighting", "vibrant color palette", "sharp artistic focus",
+          "creative composition", "premium textures", "professional digital art style"
+        ];
+        const randomModifier = variationModifiers[Math.floor(Math.random() * variationModifiers.length)];
+        const variationId = Math.floor(Math.random() * 100000);
+        // Combine user text with variation logic
+        const variationPrompt = `${text}, ${randomModifier} (variation #${variationId})`;
+        
+        const imageBase64 = await generateImage(variationPrompt, chatSettings.imageAspectRatio);
         setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: "Image generated.", relatedPrompt: text } : m));
 
       } else if (inputMode === 'image-edit' && attachments.length > 0) {
          const imageBase64 = await editImage(text, attachments[0]);
-         setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: "Image edited with Gemini 2.5 Flash." } : m));
+         setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: "Image edited." } : m));
       
       } else {
          const response = await getChatResponse(currentMessages, text, attachments, chatSettings, t.systemInstruction, (chunk) => {
