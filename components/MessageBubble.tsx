@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Bot, User, AlertCircle, RefreshCw, Palette, Volume2, VolumeX, Link as LinkIcon, Play, Pause, Loader2, Square, Key, ChevronDown, ChevronUp, Copy, Edit2, Check, ThumbsUp, ThumbsDown, Share2, GitBranch, X as CloseIcon } from 'lucide-react';
+import { Bot, User, AlertCircle, RefreshCw, Palette, Volume2, VolumeX, Link as LinkIcon, Play, Pause, Loader2, Square, Key, ChevronDown, ChevronUp, Copy, Edit2, Check, ThumbsUp, ThumbsDown, Share2, GitBranch, X as CloseIcon, Globe, MapPin } from 'lucide-react';
 import { Message, Sender, ThemeMode } from '../types';
 
 interface MessageBubbleProps {
@@ -239,12 +239,40 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
                     ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1">{children}</ul>,
                     li: ({ children }) => <li className="text-white/90">{children}</li>,
                     h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-1">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-1">{children}</h2>
+                    h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-1">{children}</h2>,
+                    table: ({ children }) => <div className="overflow-x-auto mb-4"><table className="w-full border-collapse border border-white/10">{children}</table></div>,
+                    th: ({ children }) => <th className="border border-white/10 px-4 py-2 bg-white/5 font-bold text-left">{children}</th>,
+                    td: ({ children }) => <td className="border border-white/10 px-4 py-2">{children}</td>
                   }}
                 >
                   {message.text}
                 </ReactMarkdown>
                 {message.isStreaming && <span className="inline-block w-2.5 h-4.5 ml-1.5 align-middle bg-indigo-400 rounded-sm animate-pulse" />}
+                
+                {/* Grounding Metadata Rendering */}
+                {message.groundingMetadata?.groundingChunks && message.groundingMetadata.groundingChunks.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-1">Sources & Information</p>
+                    <div className="flex flex-wrap gap-2">
+                      {message.groundingMetadata.groundingChunks.map((chunk, idx) => {
+                        const link = chunk.web || chunk.maps;
+                        if (!link) return null;
+                        return (
+                          <a 
+                            key={idx} 
+                            href={link.uri} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] font-bold text-indigo-300 hover:bg-white/10 hover:border-indigo-500/30 transition-all group/link"
+                          >
+                            {chunk.web ? <Globe size={12} className="group-hover/link:text-white" /> : <MapPin size={12} className="group-hover/link:text-white" />}
+                            <span className="truncate max-w-[140px] group-hover/link:text-white">{link.title || (chunk.web ? 'Website' : 'Location')}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             

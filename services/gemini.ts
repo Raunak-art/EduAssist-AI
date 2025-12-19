@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Modality, Chat } from "@google/genai";
 import { Message, Sender, ChatSettings, Attachment, AspectRatio } from "../types";
 import { findRelevantKnowledge } from "./knowledgeBase";
@@ -12,7 +11,7 @@ const getAiClient = () => {
 
 /**
  * Checks if a paid access token has been selected.
- * Mandatory for high-fidelity models.
+ * Mandatory for high-fidelity models like gemini-3-pro-image-preview.
  */
 const ensureAccessTokenSelected = async () => {
   if (typeof window !== 'undefined' && (window as any).aistudio) {
@@ -92,6 +91,27 @@ export const getChatResponse = async (
     systemInstruction: finalSystemInstruction,
   };
 
+  if (settings.enableMaps) {
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+          timeout: 5000,
+          enableHighAccuracy: false
+        });
+      });
+      config.toolConfig = {
+        retrievalConfig: {
+          latLng: {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          }
+        }
+      };
+    } catch (e) {
+      console.warn("Location access denied or failed. Proceeding without specific coordinates.");
+    }
+  }
+
   if (settings.modelMode === 'thinking' && !hasImage && !settings.enableMaps) { 
      config.thinkingConfig = { thinkingBudget: 32768 };
   }
@@ -101,7 +121,9 @@ export const getChatResponse = async (
   if (settings.enableMaps) tools.push({ googleMaps: {} });
   if (tools.length > 0) config.tools = tools;
 
+  // Use only the last 6 messages for context as requested
   const sdkHistory = history
+    .slice(-6) 
     .filter(msg => !msg.isError && !msg.image)
     .map(msg => ({
       role: msg.sender === Sender.USER ? 'user' : 'model',
@@ -150,8 +172,6 @@ export const generateImage = async (
 ): Promise<string> => {
   const ai = getAiClient();
   const model = 'gemini-2.5-flash-image';
-  
-  // Ensure we use a valid aspect ratio supported by the model
   const validRatio = SUPPORTED_ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : '1:1';
 
   try {
@@ -169,7 +189,7 @@ export const generateImage = async (
 
     const candidate = response.candidates?.[0];
     if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-      throw new Error(`Generation failed: ${candidate.finishReason}. Try refining your prompt.`);
+      throw new Error(`Generation blocked: ${candidate.finishReason}`);
     }
 
     const parts = candidate?.content?.parts;
@@ -181,15 +201,12 @@ export const generateImage = async (
       }
     }
 
-    throw new Error("No image was returned. This can happen due to safety filters. Try a different prompt.");
+    throw new Error("No image was returned.");
   } catch (error: any) {
     const errorStr = JSON.stringify(error).toLowerCase();
-    const isPermissionError = errorStr.includes('403') || errorStr.includes('permission_denied') || errorStr.includes('not_found');
+    const isAccessError = errorStr.includes('403') || errorStr.includes('permission_denied') || errorStr.includes('not_found');
     
-    console.error("Image generation failed:", error);
-    
-    // If Flash Image model is unavailable or restricted, try to upgrade to Pro
-    if (isPermissionError) {
+    if (isAccessError) {
       try {
         const proAi = await ensureAccessTokenSelected();
         const proResponse = await proAi.models.generateContent({
@@ -210,17 +227,19 @@ export const generateImage = async (
             return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
           }
         }
-        throw new Error("Pro model generation completed but no image was found.");
+        throw new Error("Pro model did not return image bytes.");
       } catch (proError: any) {
         const proErrorStr = JSON.stringify(proError);
-        if (proErrorStr.includes("Requested entity was not found") || proErrorStr.includes("403")) {
-          throw new Error("Access restricted. Please ensure your project has high-fidelity visual access enabled.");
+        if (proErrorStr.includes("Requested entity was not found")) {
+           // Reset key selection if entity missing
+           if ((window as any).aistudio) (window as any).aistudio.openSelectKey();
+           throw new Error("Project access required. Please select a valid paid API key.");
         }
         throw proError;
       }
     }
     
-    throw new Error(error.message || "An unexpected error occurred during image generation.");
+    throw error;
   }
 };
 
@@ -249,24 +268,18 @@ export const editImage = async (prompt: string, attachment: Attachment): Promise
         }
       }
     }
-    throw new Error("Edit failed. Try a clearer instruction.");
+    throw new Error("Edit failed.");
   } catch (error: any) {
     const errorStr = JSON.stringify(error);
-    const isPermissionError = errorStr.includes('403') || errorStr.includes('PERMISSION_DENIED');
-    
-    if (isPermissionError) {
-      try {
-        const proAi = await ensureAccessTokenSelected();
-        const proResponse = await proAi.models.generateContent({
-          model: 'gemini-3-pro-image-preview',
-          contents: { parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }, { text: prompt }] },
-          config: { imageConfig: { imageSize: '1K' } }
-        });
-        for (const part of proResponse.candidates?.[0]?.content?.parts || []) {
-          if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        }
-      } catch (proError: any) {
-        throw proError;
+    if (errorStr.includes('403') || errorStr.includes('PERMISSION_DENIED')) {
+      const proAi = await ensureAccessTokenSelected();
+      const proResponse = await proAi.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: { parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }, { text: prompt }] },
+        config: { imageConfig: { imageSize: '1K' } }
+      });
+      for (const part of proResponse.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
       }
     }
     throw error;

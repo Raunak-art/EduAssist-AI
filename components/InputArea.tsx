@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SendHorizontal, Loader2, Palette, Paperclip, X, File as FileIcon, Upload, Mic, Square, MessageSquare, Wand2, ImageIcon, Layout, Globe, MapPin, ChevronDown, BookOpen, Search } from 'lucide-react';
-import { Attachment, InputMode, ChatSettings, ThemeMode, AspectRatio } from '../types';
+// Added Loader2 to the import list from lucide-react
+import { SendHorizontal, Palette, Paperclip, X, File as FileIcon, Upload, Mic, Square, ImageIcon, BookOpen, Search, ChevronDown, Wand2, Sparkles, Layout, Loader2 } from 'lucide-react';
+import { Attachment, InputMode, ChatSettings, AspectRatio } from '../types';
 
 interface InputAreaProps {
   onSend: (text: string, attachments: Attachment[]) => void;
@@ -35,6 +36,7 @@ export const InputArea: React.FC<InputAreaProps> = ({
 }) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [showCreativeMenu, setShowCreativeMenu] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicrophone, setHasMicrophone] = useState(true);
 
@@ -42,9 +44,18 @@ export const InputArea: React.FC<InputAreaProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const creativeMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) setHasMicrophone(false);
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (creativeMenuRef.current && !creativeMenuRef.current.contains(event.target as Node)) {
+        setShowCreativeMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -61,6 +72,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
       onSend(input, attachments);
       setInput('');
       setAttachments([]);
+      // Reset mode to text after sending if it was image-gen
+      if (mode === 'image-gen') setMode('text');
     }
   };
 
@@ -112,6 +125,8 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   const pillClass = (active: boolean) => `flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all whitespace-nowrap active:scale-95 ${active ? 'bg-white/10 border-white/20 text-white' : 'border-white/5 text-white/40 hover:text-white hover:border-white/10'}`;
 
+  const aspectRatios: AspectRatio[] = ['1:1', '4:3', '16:9'];
+
   return (
     <>
       {showAttachModal && (
@@ -146,16 +161,33 @@ export const InputArea: React.FC<InputAreaProps> = ({
               </div>
             )}
             
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-              placeholder={mode === 'image-gen' ? imageModePlaceholder : (t.placeholder || placeholder)}
-              disabled={isLoading || isRecording}
-              className="bg-transparent border-none focus:ring-0 resize-none py-1 px-1 text-lg text-white placeholder:text-white/30 outline-none leading-relaxed w-full font-medium"
-              style={{ minHeight: '32px' }}
-            />
+            <div className="flex flex-col gap-2">
+              {mode === 'image-gen' && (
+                <div className="flex items-center gap-2 mb-1 animate-in fade-in slide-in-from-bottom-2">
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-widest px-1">Aspect Ratio:</span>
+                  {aspectRatios.map(ratio => (
+                    <button 
+                      key={ratio}
+                      onClick={() => setChatSettings(prev => ({ ...prev, imageAspectRatio: ratio }))}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${chatSettings.imageAspectRatio === ratio ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-white/10 text-white/40 hover:text-white hover:bg-white/5'}`}
+                    >
+                      {ratio}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+                placeholder={mode === 'image-gen' ? (t.describeImage || "Describe the image you want to generate...") : (t.placeholder || placeholder)}
+                disabled={isLoading || isRecording}
+                className={`bg-transparent border-none focus:ring-0 resize-none py-1 px-1 text-lg text-white placeholder:text-white/30 outline-none leading-relaxed w-full font-medium transition-colors ${mode === 'image-gen' ? 'text-indigo-200' : ''}`}
+                style={{ minHeight: '32px' }}
+              />
+            </div>
 
             <div className="flex items-center justify-between gap-2 pt-1">
                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
@@ -168,9 +200,38 @@ export const InputArea: React.FC<InputAreaProps> = ({
                  <button onClick={onOpenKnowledgeBase} className={pillClass(false)}>
                    <BookOpen size={14} /> {t.inputStudy || "Study"}
                  </button>
-                 <button onClick={() => setMode(mode === 'image-gen' ? 'text' : 'image-gen')} className={pillClass(mode === 'image-gen')}>
-                   <ImageIcon size={14} /> {t.inputCreateImage || "Create image"}
-                 </button>
+                 <div className="relative" ref={creativeMenuRef}>
+                   <button 
+                    onClick={() => setShowCreativeMenu(!showCreativeMenu)} 
+                    className={pillClass(mode === 'image-gen' || mode === 'image-edit')}
+                   >
+                     <Palette size={14} /> {t.menuCreative || "Creative Studio"} <ChevronDown size={12} className={`transition-transform duration-300 ${showCreativeMenu ? 'rotate-180' : ''}`} />
+                   </button>
+                   
+                   {showCreativeMenu && (
+                     <div className="absolute bottom-full left-0 mb-3 w-56 glass-panel rounded-2xl border border-white/10 shadow-2xl p-2 animate-ios-pop z-[60]">
+                        <button 
+                          onClick={() => { setMode('image-gen'); setShowCreativeMenu(false); }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${mode === 'image-gen' ? 'bg-indigo-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                        >
+                          <Sparkles size={16} /> {t.generateImages || "Free Generator"}
+                        </button>
+                        <button 
+                          onClick={() => { setMode('image-edit'); setShowCreativeMenu(false); }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-colors ${mode === 'image-edit' ? 'bg-indigo-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                        >
+                          <Wand2 size={16} /> Image Editor
+                        </button>
+                        <div className="h-px bg-white/5 my-1 mx-2" />
+                        <button 
+                          onClick={() => { setMode('text'); setShowCreativeMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                        >
+                          <Layout size={16} /> Reset to Chat
+                        </button>
+                     </div>
+                   )}
+                 </div>
                </div>
 
                <div className="flex items-center gap-2 flex-shrink-0">
@@ -180,8 +241,9 @@ export const InputArea: React.FC<InputAreaProps> = ({
                     </button>
                   )}
                   {canSend && (
-                    <button onClick={handleSend} className="p-2.5 bg-white text-black rounded-full hover:bg-slate-200 transition-all shadow-xl active:scale-90 flex items-center justify-center">
-                      <SendHorizontal size={20} />
+                    <button onClick={handleSend} className={`p-2.5 rounded-full transition-all shadow-xl active:scale-90 flex items-center justify-center ${mode === 'image-gen' ? 'bg-indigo-500 text-white hover:bg-indigo-400' : 'bg-white text-black hover:bg-slate-200'}`}>
+                      {/* Fixed: Loader2 is now imported and correctly used here */}
+                      {isLoading ? <Loader2 className="animate-spin" size={20} /> : <SendHorizontal size={20} />}
                     </button>
                   )}
                </div>
