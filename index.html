@@ -12,36 +12,78 @@
         theme: {
           extend: {
             borderRadius: {
-              'ios': '2.25rem',
+              'ios': '1.75rem',
+              'nexus': '2rem',
             },
             backdropBlur: {
               'ios': '24px',
+              'nexus': '40px',
+            },
+            animation: {
+              'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'shimmer': 'shimmer 2s linear infinite',
+              'float': 'float 6s ease-in-out infinite',
+            },
+            keyframes: {
+              'pulse-glow': {
+                '0%, 100%': { opacity: 1, filter: 'brightness(1)' },
+                '50%': { opacity: 0.8, filter: 'brightness(1.5)' },
+              },
+              'shimmer': {
+                '0%': { backgroundPosition: '-200% 0' },
+                '100%': { backgroundPosition: '200% 0' },
+              },
+              'float': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              }
             }
           }
         }
       }
     </script>
     <style>
-      /* Smooth transition for liquid theme colors */
-      @property --liquid-1 { syntax: '<color>'; initial-value: #020617; inherits: false; }
-      @property --liquid-2 { syntax: '<color>'; initial-value: #1e1b4b; inherits: false; }
-      @property --liquid-3 { syntax: '<color>'; initial-value: #312e81; inherits: false; }
-      @property --liquid-4 { syntax: '<color>'; initial-value: #1e293b; inherits: false; }
-
       :root {
-        --liquid-1: #020617;
-        --liquid-2: #1e1b4b;
-        --liquid-3: #312e81;
-        --liquid-4: #1e293b;
-        --glass-bg: rgba(255, 255, 255, 0.08);
-        --glass-border: rgba(255, 255, 255, 0.15);
-        --glass-text: #ffffff;
+        --nexus-bg: #000000;
+        --nexus-card: #0a0a0a;
+        --glass-bg: rgba(255, 255, 255, 0.03);
+        --glass-border: rgba(255, 255, 255, 0.1);
+      }
+
+      body {
+        background-color: var(--nexus-bg);
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        /* Removed overflow-hidden to allow scrolling on landing page */
+      }
+
+      .nexus-mesh {
+        background: 
+          linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          radial-gradient(circle at 50% 50%, #0a0a0a 0%, #000000 100%);
+        background-size: 40px 40px, 40px 40px, 100% 100%;
+        background-attachment: fixed;
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .nexus-input-bar {
+        background: #1a1a1a;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
       }
 
       /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
+        width: 8px;
       }
       ::-webkit-scrollbar-track {
         background: transparent;
@@ -50,77 +92,44 @@
         background: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
       }
-      
-      /* Dynamic iOS Mesh Gradient */
-      .liquid-bg {
-        background-color: var(--liquid-1);
-        background-image: 
-          radial-gradient(at 0% 0%, var(--liquid-2) 0px, transparent 50%),
-          radial-gradient(at 50% 0%, var(--liquid-3) 0px, transparent 50%),
-          radial-gradient(at 100% 0%, var(--liquid-4) 0px, transparent 50%),
-          radial-gradient(at 0% 50%, var(--liquid-3) 0px, transparent 50%),
-          radial-gradient(at 100% 50%, var(--liquid-2) 0px, transparent 50%),
-          radial-gradient(at 50% 100%, var(--liquid-3) 0px, transparent 50%);
-        background-attachment: fixed;
-        transition: --liquid-1 0.8s ease, --liquid-2 0.8s ease, --liquid-3 0.8s ease, --liquid-4 0.8s ease;
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
       }
 
-      .glass-panel {
-        background: var(--glass-bg);
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid var(--glass-border);
-        color: var(--glass-text);
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
       }
-      
-      .glass-panel-dark {
-        background: rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(24px) saturate(160%);
-        -webkit-backdrop-filter: blur(24px) saturate(160%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      .ios-pill {
-        border-radius: 9999px;
-      }
-
-      .ios-shadow {
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
 
       .animate-ios-pop {
-        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: ios-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      .animate-spin-slow {
-        animation: spin 8s linear infinite;
-      }
-
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+      @keyframes ios-pop {
+        0% { transform: scale(0.95); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
       }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "uuid": "https://esm.sh/uuid@^13.0.0",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
-    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "v4": "https://esm.sh/uuid@^13.0.0"
   }
 }
 </script>
-</head>
-  <body class="bg-slate-50 text-slate-900 antialiased transition-colors duration-300 overflow-hidden">
+  </head>
+  <body class="nexus-mesh min-h-screen">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

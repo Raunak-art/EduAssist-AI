@@ -1,4 +1,3 @@
-
 import { Language } from "../types";
 
 export const LANGUAGES: { [key in Language]: string } = {
@@ -27,7 +26,40 @@ export const LANGUAGES: { [key in Language]: string } = {
   th: 'ไทย'
 };
 
-const BASE_SYSTEM_INSTRUCTION = "You are EduAssist AI, a helpful, friendly, and knowledgeable educational assistant. You provide clear, concise, and accurate answers suitable for students. Format your responses using Markdown.";
+const BASE_SYSTEM_INSTRUCTION = `You are EduAssist, a world-class AI tutor designed specifically for school students (Classes 6–10).
+
+Your Goals:
+- Help students understand academic concepts clearly, correctly, and safely.
+- Use simple, age-appropriate language suitable for middle and high school students.
+- Follow CBSE / NCERT-style explanations where possible.
+- Prefer step-by-step explanations.
+- Use bullet points, examples, and short paragraphs for readability.
+- Be polite, encouraging, and student-friendly.
+
+Core Behavioral Rules:
+- Context Awareness: You will receive previous conversation messages. Use them to understand context and follow-up questions. If the student says "explain again", "simpler", or "why", refer directly to the previous topic discussed.
+- Factual Honesty & Safety: If you are not fully sure about a factual answer, say so clearly. NEVER invent facts or hallucinate information. Prefer correct and safe explanations over confident guesses.
+- Knowledge Level: Do NOT assume the student knows advanced terms. Explain them simply if they are necessary for the answer.
+- Academic Scope: If the topic is outside school-level academics (Classes 6-10), say so politely. Avoid unsafe or non-educational content.
+
+Handling Special Requests:
+- If the student asks for "simple" or "simpler" → Explain using very basic words and provide one clear everyday example.
+- If the student asks for "detailed" → Include formal definitions, step-by-step breakdowns, and multiple examples.
+- If the student asks for "exam" or "exam-ready" → Give point-wise answers suitable for school exams (use headings, sub-headings, and highlight key terms).
+- If the student asks for "practice", "test", or "quiz" →
+    1. Generate questions strictly suitable for school-level exams (Classes 6-10).
+    2. Use formats like MCQs, short answers, or very short answers.
+    3. Clearly label answers in a separate 'Answer Key' section.
+    4. Avoid overly difficult or university-level questions.
+
+Handling Ambiguity:
+- If a question is unclear or you don't understand it:
+    1. Say you are not fully sure what the student means.
+    2. Ask a short clarifying question.
+    3. Suggest 2–3 example questions related to school subjects (e.g., "Would you like to know about Newton's Laws, the Water Cycle, or Linear Equations?")
+- NEVER respond with only "I don't know". Always try to guide the student back to an academic topic.
+
+Format your responses using clean Markdown.`;
 
 const en = {
     loginWelcomeTitle: "Welcome to EduAssist AI",
@@ -94,7 +126,7 @@ const en = {
     namePlaceholder: "e.g. Alex Smith",
     gradePlaceholder: "e.g. 10th Grade",
     sectionPlaceholder: "e.g. Section A",
-    continueGoogle: "Continue with Google",
+    continueGoogle: "Continue with EduAccount",
     continueApple: "Continue with Apple",
     or: "OR",
     noAccount: "Don't have an account?",
@@ -109,7 +141,25 @@ const en = {
     signin: "Sign In",
     hasAccount: "Already have an account?",
     guest: "Guest",
-    proMember: "Pro Member"
+    proMember: "Pro Member",
+
+    // Sidebar & Input
+    sidebarHistory: "History",
+    sidebarNoHistory: "No History",
+    sidebarStartStudy: "Start a study session",
+    inputAttach: "Attach",
+    inputSearch: "Search",
+    inputStudy: "Study",
+    inputCreateImage: "Create Image",
+    settingsGeneral: "General",
+    settingsIntelligence: "Intelligence",
+    settingsAccount: "Account",
+    settingsLanguage: "Language",
+    settingsModeSelection: "Mode Selection",
+    settingsSnowEffect: "Snow Effect",
+    settingsSearchGrounding: "Search Grounding",
+    settingsLocationIntel: "Location Intelligence",
+    settingsSignOut: "Sign Out"
 };
 
 const pt = { 
@@ -175,7 +225,7 @@ const pt = {
     namePlaceholder: "ex: Alex Silva",
     gradePlaceholder: "ex: 1º Ano",
     sectionPlaceholder: "ex: Turma A",
-    continueGoogle: "Continuar com Google",
+    continueGoogle: "Continuar com EduAccount",
     continueApple: "Continuar com Apple",
     or: "OU",
     noAccount: "Não tem uma conta?",
@@ -190,7 +240,25 @@ const pt = {
     signin: "Entrar",
     hasAccount: "Já tem uma conta?",
     guest: "Convidado",
-    proMember: "Membro Pro"
+    proMember: "Membro Pro",
+
+    // Sidebar & Input
+    sidebarHistory: "Histórico",
+    sidebarNoHistory: "Sem Histórico",
+    sidebarStartStudy: "Comece uma sessão de estudos",
+    inputAttach: "Anexar",
+    inputSearch: "Pesquisar",
+    inputStudy: "Estudar",
+    inputCreateImage: "Criar Imagem",
+    settingsGeneral: "Geral",
+    settingsIntelligence: "Inteligência",
+    settingsAccount: "Conta",
+    settingsLanguage: "Idioma",
+    settingsModeSelection: "Seleção de Modo",
+    settingsSnowEffect: "Efeito de Neve",
+    settingsSearchGrounding: "Pesquisa Web",
+    settingsLocationIntel: "Inteligência de Localização",
+    settingsSignOut: "Sair"
 };
 
 const es = { 
@@ -218,12 +286,12 @@ const es = {
     iAmTeacher: "Soy Profesor",
     completeProfile: "Completa tu Perfil",
     enterInfo: "Por favor, proporciona algunos detalles más.",
-    dateOfBirth: "Fecha de Nacimiento",
+    dateOfBirth: "Fecha de Nascimento",
     grade: "Grado / Clase",
     section: "Sección",
     continue: "Continuar",
     light: "Claro",
-    dark: "Oscuro",
+    dark: "Escuro",
     liquid: "Líquido",
     liquidColor: "Color del Tema",
     searchPlaceholder: "Buscar mensajes...",
@@ -245,7 +313,25 @@ const es = {
     kbPlaceholder: "Buscar preguntas...",
     noResults: "No se encontraron preguntas.",
     kbUseQuestion: "Preguntar esto",
-    systemInstruction: `${BASE_SYSTEM_INSTRUCTION} Responde siempre en español.`
+    systemInstruction: `${BASE_SYSTEM_INSTRUCTION} Responde siempre en español.`,
+
+    // Sidebar & Input
+    sidebarHistory: "Historial",
+    sidebarNoHistory: "Sin Historial",
+    sidebarStartStudy: "Inicia una sesión de estudio",
+    inputAttach: "Adjuntar",
+    inputSearch: "Buscar",
+    inputStudy: "Estudar",
+    inputCreateImage: "Crear Imagen",
+    settingsGeneral: "General",
+    settingsIntelligence: "Inteligencia",
+    settingsAccount: "Cuenta",
+    settingsLanguage: "Idioma",
+    settingsModeSelection: "Selección de Modo",
+    settingsSnowEffect: "Efeito de Neve",
+    settingsSearchGrounding: "Búsqueda Web",
+    settingsLocationIntel: "Inteligencia de Ubicación",
+    settingsSignOut: "Cerrar Sesión"
 };
 
 export const TRANSLATIONS: { [key: string]: typeof en } = {

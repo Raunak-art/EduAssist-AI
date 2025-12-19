@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { getChatResponse, editImage, generateSpeech, generateImage, decodeBase64, decodeAudioData } from '../services/gemini';
 import { Message, Sender, User, Theme, ThemeMode, Language, ChatSession, Attachment, InputMode, ChatSettings, SessionStatus } from '../types';
@@ -8,7 +8,7 @@ import { InputArea } from './InputArea';
 import { ImageModal } from './ImageModal';
 import { Sidebar } from './Sidebar';
 import { KnowledgeBaseModal } from './KnowledgeBaseModal';
-import { Menu, Search, Sun, Moon, Droplets, Snowflake, Check, Languages, ChevronRight, ArrowLeft, X } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Droplets, Snowflake, Check, Languages, ChevronRight, ArrowLeft, X, Layout, Sparkles, Zap, Brain, Globe, MapPin, Star } from 'lucide-react';
 import { storageService } from '../services/storage';
 import { TRANSLATIONS, LANGUAGES } from '../services/translations';
 
@@ -17,6 +17,8 @@ interface ChatInterfaceProps {
   onLogout: () => void;
   appLanguage: Language;
   onLanguageChange: (lang: Language) => void;
+  theme: Theme;
+  onThemeChange: (theme: Theme) => void;
 }
 
 const Snowfall: React.FC = () => {
@@ -85,7 +87,7 @@ const Snowfall: React.FC = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[1]" />;
 };
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, appLanguage, onLanguageChange }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, appLanguage, onLanguageChange, theme, onThemeChange }) => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,10 +97,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
   
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [theme, setTheme] = useState<Theme>(() => storageService.loadTheme());
   const [showSettings, setShowSettings] = useState(false);
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
-  const [settingsView, setSettingsView] = useState<'main' | 'language'>('main');
   
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
     modelMode: 'balanced',
@@ -128,49 +128,34 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
   useEffect(() => {
     const userSessions = storageService.getSessions(user.id);
     setSessions(userSessions);
-    const onboardingKey = `eduassist_onboarded_${user.id}`;
-    if (!localStorage.getItem(onboardingKey)) {
-       localStorage.setItem(onboardingKey, 'true');
-       const guideSessionId = uuidv4();
-       const now = new Date();
-       const cleanName = user.name.toLowerCase().includes('guest') ? '' : ` ${user.name}`;
-       const guideMessages: Message[] = [
-          { id: uuidv4(), text: (t.guideWelcome || "👋 Hi!").replace('{name}', cleanName), sender: Sender.BOT, timestamp: new Date(now.getTime() - 2000) },
-          { id: uuidv4(), text: t.guideCapabilities || "I can help!", sender: Sender.BOT, timestamp: new Date(now.getTime() - 1500) },
-          { id: uuidv4(), text: t.guideReady || "Ready?", sender: Sender.BOT, timestamp: now }
-       ];
-       setCurrentSessionId(guideSessionId);
-       setMessages(guideMessages);
-       storageService.saveSessionMessages(user.id, guideSessionId, guideMessages, t.guideSessionTitle || "Guide");
-    } else if (userSessions.length > 0) {
-       selectSession(userSessions[0].id);
+    if (userSessions.length > 0) {
+      selectSession(userSessions[0].id);
     } else {
-       startNewChat();
+      startNewChat();
     }
-  }, [user.id, t]); 
+  }, [user.id]); 
 
   useEffect(() => {
     const behavior = isStreamingRef.current ? 'auto' : 'smooth';
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
   }, [messages, isLoading]);
 
-  const selectSession = (sessionId: string) => {
+  const selectSession = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
-    setMessages(storageService.loadSessionMessages(sessionId));
+    const loaded = storageService.loadSessionMessages(sessionId);
+    setMessages(loaded);
     setInputMode('text');
     setIsSearching(false);
     setSidebarOpen(false);
-  };
+  }, []);
 
-  const startNewChat = () => {
+  const startNewChat = useCallback(() => {
     setCurrentSessionId(null);
-    const cleanName = user.name.toLowerCase().includes('guest') ? '' : user.name;
-    const welcomeText = (user.role === 'teacher' ? (t.welcomeTeacher || "Hello Teacher!") : t.welcome).replace('{name}', cleanName);
-    setMessages([{ id: 'welcome-msg', text: welcomeText, sender: Sender.BOT, timestamp: new Date() }]);
+    setMessages([]);
     setInputMode('text');
     setIsSearching(false);
     setSidebarOpen(false);
-  };
+  }, []);
 
   const updateSessionStatus = (sessionId: string, status: SessionStatus) => {
     storageService.updateSessionStatus(user.id, sessionId, status);
@@ -178,7 +163,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
     if (currentSessionId === sessionId && status !== 'active') startNewChat();
   };
 
-  const handleSendMessage = async (text: string, attachments: Attachment[] = []) => {
+  const handleSendMessage = useCallback(async (text: string, attachments: Attachment[] = [], forcedMode?: InputMode) => {
+    const activeMode = forcedMode || inputMode;
     const sessionId = currentSessionId || uuidv4();
     if (!currentSessionId) setCurrentSessionId(sessionId);
     const userMessage: Message = { id: uuidv4(), text, sender: Sender.USER, timestamp: new Date(), attachments };
@@ -195,41 +181,98 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
     isStreamingRef.current = true;
     
     try {
-      if (inputMode === 'image-gen') {
-        // Variation logic: Append random seeds and modifiers to prompt to ensure model generates fresh variations
-        const variationModifiers = [
-          "cinematic masterwork", "highly intricate details", "unique perspective", 
-          "dramatic lighting", "vibrant color palette", "sharp artistic focus",
-          "creative composition", "premium textures", "professional digital art style"
-        ];
-        const randomModifier = variationModifiers[Math.floor(Math.random() * variationModifiers.length)];
-        const variationId = Math.floor(Math.random() * 100000);
-        // Combine user text with variation logic
-        const variationPrompt = `${text}, ${randomModifier} (variation #${variationId})`;
-        
-        const imageBase64 = await generateImage(variationPrompt, chatSettings.imageAspectRatio);
-        setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: "Image generated.", relatedPrompt: text } : m));
-
-      } else if (inputMode === 'image-edit' && attachments.length > 0) {
+      if (activeMode === 'image-gen') {
+        const imageBase64 = await generateImage(text, chatSettings.imageAspectRatio);
+        setMessages(prev => {
+          const next = prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: text, relatedPrompt: text } : m);
+          storageService.saveSessionMessages(user.id, sessionId, next);
+          return next;
+        });
+      } else if (activeMode === 'image-edit' && attachments.length > 0) {
          const imageBase64 = await editImage(text, attachments[0]);
-         setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: "Image edited." } : m));
-      
+         setMessages(prev => {
+          const next = prev.map(m => m.id === botMessageId ? { ...m, image: imageBase64, isStreaming: false, text: text } : m);
+          storageService.saveSessionMessages(user.id, sessionId, next);
+          return next;
+         });
       } else {
          const response = await getChatResponse(currentMessages, text, attachments, chatSettings, t.systemInstruction, (chunk) => {
              setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, text: chunk } : m));
          });
-         setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, text: response.text, isStreaming: false, groundingMetadata: response.groundingMetadata } : m));
+         setMessages(prev => {
+          const next = prev.map(m => m.id === botMessageId ? { ...m, text: response.text, isStreaming: false, groundingMetadata: response.groundingMetadata } : m);
+          storageService.saveSessionMessages(user.id, sessionId, next);
+          return next;
+         });
       }
     } catch (error: any) {
       setMessages(prev => prev.map(m => m.id === botMessageId ? { ...m, text: error.message || "Error occurred.", isError: true, isStreaming: false } : m));
     } finally {
       setIsLoading(false);
       isStreamingRef.current = false;
-      setTimeout(() => {
-        setMessages(prev => { storageService.saveSessionMessages(user.id, sessionId, prev); return prev; });
-      }, 100);
     }
-  };
+  }, [messages, currentSessionId, inputMode, chatSettings, user.id, t]);
+
+  const handleDetailedFeedback = useCallback((msgId: string, feedbackText: string, shouldImprove: boolean) => {
+    setMessages(prev => {
+      const next: Message[] = prev.map(m => m.id === msgId ? { ...m, feedback: 'negative' as 'negative' } : m);
+      if (currentSessionId) storageService.saveSessionMessages(user.id, currentSessionId, next);
+      return next;
+    });
+
+    if (shouldImprove && feedbackText) {
+      handleSendMessage(`Please improve your previous answer. I wasn't happy with it because: ${feedbackText}. Provide a corrected and more helpful response.`);
+    }
+  }, [currentSessionId, user.id, handleSendMessage]);
+
+  const handleRecreate = useCallback((msgId: string) => {
+    const index = messages.findIndex(m => m.id === msgId);
+    if (index > 0 && messages[index - 1].sender === Sender.USER) {
+      const prevUserMsg = messages[index - 1];
+      const newMessages = messages.slice(0, index);
+      setMessages(newMessages);
+      handleSendMessage(prevUserMsg.text, prevUserMsg.attachments || []);
+    }
+  }, [messages, handleSendMessage]);
+
+  const handleFeedback = useCallback((msgId: string, feedback: 'positive' | 'negative') => {
+    setMessages(prev => {
+      const next = prev.map(m => m.id === msgId ? { ...m, feedback } : m);
+      if (currentSessionId) storageService.saveSessionMessages(user.id, currentSessionId, next);
+      return next;
+    });
+  }, [currentSessionId, user.id]);
+
+  const handleShare = useCallback(async (text: string) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'EduAssist AI Response',
+          text: text,
+          url: window.location.href
+        });
+      } else {
+        await navigator.clipboard.writeText(text);
+        alert('Copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Share failed', err);
+    }
+  }, []);
+
+  const handleBranch = useCallback((msgId: string) => {
+    const index = messages.findIndex(m => m.id === msgId);
+    if (index >= 0) {
+      const branchedHistory = messages.slice(0, index + 1);
+      const newSessionId = uuidv4();
+      const firstUserMsg = branchedHistory.find(m => m.sender === Sender.USER);
+      const title = firstUserMsg ? `Branch: ${firstUserMsg.text.substring(0, 30)}...` : 'Branched Chat';
+      
+      storageService.saveSessionMessages(user.id, newSessionId, branchedHistory, title);
+      setSessions(storageService.getSessions(user.id));
+      selectSession(newSessionId);
+    }
+  }, [messages, user.id, selectSession]);
 
   const handlePlayAudio = async (id: string, text: string) => {
     if (activeAudioId === id) {
@@ -258,95 +301,242 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ user, onLogout, ap
     }
   };
 
-  const handleThemeChange = (mode: ThemeMode) => {
-    const newTheme = { ...theme, mode };
-    setTheme(newTheme);
-    storageService.saveTheme(newTheme);
-    storageService.applyTheme();
+  const handleToggleSnow = () => {
+    onThemeChange({ ...theme, snowingEnabled: !theme.snowingEnabled });
   };
 
-  const toggleSnow = () => {
-    const newTheme = { ...theme, snowingEnabled: !theme.snowingEnabled };
-    setTheme(newTheme);
-    storageService.saveTheme(newTheme);
+  const handleToggleGalaxy = () => {
+    onThemeChange({ ...theme, galaxyEnabled: !theme.galaxyEnabled });
   };
 
-  const isDark = theme.mode === 'dark';
-  const isLiquid = theme.mode === 'liquid';
   const displayedMessages = searchQuery ? messages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
 
   return (
-    <div className={`${isDark ? 'dark' : ''} h-screen flex flex-col overflow-hidden relative`} dir={isRTL ? 'rtl' : 'ltr'}>
-      {isLiquid && <div className="fixed inset-0 liquid-bg z-0 pointer-events-none"></div>}
-      {theme.snowingEnabled && <Snowfall key="active-snowfall" />}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} sessions={sessions} currentSessionId={currentSessionId} onNewChat={startNewChat} onSelectSession={selectSession} onDeleteSession={(id) => { storageService.deleteSession(user.id, id); setSessions(storageService.getSessions(user.id)); }} onArchiveSession={(id) => updateSessionStatus(id, 'archived')} onHideSession={(id) => updateSessionStatus(id, 'hidden')} onOpenSettings={() => { setSettingsView('main'); setShowSettings(true); }} onOpenKnowledgeBase={() => setShowKnowledgeBase(true)} onLogout={onLogout} user={user} t={t} themeMode={theme.mode} />
-      <div className={`flex-1 flex flex-col h-full relative z-10 ${isLiquid ? 'bg-transparent' : 'bg-slate-50 dark:bg-slate-950'}`}>
-        <header className={`flex-none backdrop-blur-md border-b sticky top-0 z-20 transition-colors ${isLiquid ? 'bg-white/5 border-white/10 text-white' : 'bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100'}`}>
+    <div className="h-screen flex flex-col overflow-hidden relative" dir={isRTL ? 'rtl' : 'ltr'}>
+      {theme.snowingEnabled && <Snowfall />}
+      
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+        sessions={sessions} 
+        currentSessionId={currentSessionId} 
+        onNewChat={startNewChat} 
+        onSelectSession={selectSession} 
+        onDeleteSession={(id) => { storageService.deleteSession(user.id, id); setSessions(storageService.getSessions(user.id)); }} 
+        onArchiveSession={(id) => updateSessionStatus(id, 'archived')} 
+        onHideSession={(id) => updateSessionStatus(id, 'hidden')} 
+        onOpenSettings={() => setShowSettings(true)} 
+        onOpenKnowledgeBase={() => setShowKnowledgeBase(true)} 
+        onLogout={onLogout} 
+        user={user} 
+        t={t} 
+        themeMode={theme.mode} 
+      />
+      
+      <div className="flex-1 flex flex-col h-full relative z-10">
+        <header className="flex-none border-b border-white/5 sticky top-0 z-20 bg-black/80 backdrop-blur-md text-white">
           <div className="px-4 py-3 flex items-center justify-between gap-4">
-            {isSearching ? (<div className="flex-1 flex items-center gap-2"><Search size={16} className="text-slate-400" /><input autoFocus type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setIsSearching(false)} className="flex-1 bg-transparent border-none outline-none text-sm" placeholder={t.searchPlaceholder} /><button onClick={() => { setIsSearching(false); setSearchQuery(''); }} className="text-xs font-bold hover:underline">{t.cancel}</button></div>) : (<><div className="flex items-center gap-3"><button onClick={() => setSidebarOpen(true)} className={`p-2 rounded-lg hover:bg-white/10 transition-colors`}><Menu size={24} /></button><h1 className="font-bold truncate max-w-[180px]">{currentSessionId ? sessions.find(s => s.id === currentSessionId)?.title : (t.defaultChatTitle || "EduAssist AI")}</h1></div><button onClick={() => setIsSearching(true)} className={`p-2 rounded-lg hover:bg-white/10 transition-colors`}><Search size={20} /></button></>)}
+            <div className="flex items-center gap-3">
+              <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-white/5 transition-colors"><Menu size={24} /></button>
+              <h1 className="font-bold truncate max-w-[180px] text-base">{currentSessionId ? sessions.find(s => s.id === currentSessionId)?.title : t.defaultChatTitle}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setIsSearching(true)} className="p-2 rounded-xl hover:bg-white/5 transition-colors"><Search size={20} /></button>
+            </div>
           </div>
         </header>
+
         {showSettings && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowSettings(false)}>
-            <div className={`w-full max-w-md rounded-2xl shadow-2xl p-6 ${isLiquid ? 'glass-panel text-white' : 'bg-white dark:bg-slate-900'} overflow-hidden relative`} onClick={e => e.stopPropagation()}>
-              {settingsView === 'main' ? (
-                <div className="animate-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center justify-between mb-6"><h3 className="font-bold text-lg">{t.settings}</h3><button onClick={() => setShowSettings(false)} className="p-1 hover:bg-black/5 rounded-full"><X size={20} /></button></div>
-                  <div className="space-y-6">
-                    <div><label className="block text-xs font-semibold uppercase tracking-wider mb-3 opacity-60">{t.appearance}</label><div className="grid grid-cols-3 gap-2">{['light', 'dark', 'liquid'].map((m) => (<button key={m} onClick={() => handleThemeChange(m as ThemeMode)} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${theme.mode === m ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}>{m === 'light' ? <Sun size={20} /> : m === 'dark' ? <Moon size={20} /> : <Droplets size={20} />}<span className="text-[10px] mt-1 capitalize">{t[m] || m}</span></button>))}</div></div>
-                    <div className="pt-2"><label className="block text-xs font-semibold uppercase tracking-wider mb-3 opacity-60">{t.language}</label><button onClick={() => setSettingsView('language')} className={`w-full flex items-center justify-between p-3 rounded-xl transition-all bg-white/5 hover:bg-white/10`}><div className="flex items-center gap-3"><Languages size={20} className="text-indigo-500" /><span className="text-sm font-medium">{LANGUAGES[appLanguage]}</span></div><ChevronRight size={18} className="opacity-40" /></button></div>
-                    <div className="pt-4 border-t border-black/10 dark:border-white/10"><button onClick={(e) => { e.stopPropagation(); toggleSnow(); }} className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${theme.snowingEnabled ? 'bg-indigo-600 text-white' : 'bg-black/5 dark:bg-white/5 text-slate-500'}`}><div className="flex items-center gap-3"><Snowflake size={20} className={theme.snowingEnabled ? 'animate-spin-slow' : ''} /><span className="text-sm font-semibold">Snowing Effect</span></div><div className={`w-10 h-6 rounded-full relative transition-colors ${theme.snowingEnabled ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-700'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${theme.snowingEnabled ? 'translate-x-5' : 'translate-x-1'}`} /></div></button></div>
-                  </div>
+            <div className="w-full max-w-xl rounded-[2rem] shadow-2xl p-8 glass-panel text-white border-white/10 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-bold flex items-center gap-2">{t.settings || "Settings"}</h3>
+                  <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
                 </div>
-              ) : (
-                <div className="animate-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center gap-3 mb-6"><button onClick={() => setSettingsView('main')} className="p-1 hover:bg-black/5 rounded-full"><ArrowLeft size={20} /></button><h3 className="font-bold text-lg">{t.language}</h3></div>
-                  <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2">{Object.entries(LANGUAGES).map(([key, label]) => (<button key={key} onClick={() => { onLanguageChange(key as Language); setSettingsView('main'); }} className={`flex items-center justify-between p-3 rounded-xl text-left text-sm transition-all ${appLanguage === key ? 'bg-indigo-600 text-white' : 'hover:bg-white/10'}`}><span>{label}</span>{appLanguage === key && <Check size={16} />}</button>))}</div>
+                
+                <div className="space-y-10">
+                  {/* General Section */}
+                  <section>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 px-1">{t.settingsGeneral || "General"}</h4>
+                    <div className="space-y-4">
+                       <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                             <Languages size={18} className="text-white/40" />
+                             <span className="text-sm font-semibold">{t.settingsLanguage || t.language || "Language"}</span>
+                          </div>
+                          <select 
+                            value={appLanguage} 
+                            onChange={(e) => onLanguageChange(e.target.value as Language)}
+                            className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold outline-none focus:ring-1 focus:ring-white/20"
+                          >
+                             {Object.entries(LANGUAGES).map(([code, name]) => (
+                               <option key={code} value={code} className="bg-black">{name}</option>
+                             ))}
+                          </select>
+                       </div>
+                    </div>
+                  </section>
+
+                  {/* Intelligence Section */}
+                  <section>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 px-1">{t.settingsIntelligence || "Intelligence"}</h4>
+                    <div className="space-y-3">
+                       <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-4">
+                          <p className="text-xs font-bold text-white/40 flex items-center gap-2 mb-2"><Brain size={14} /> {t.settingsModeSelection || "Mode Selection"}</p>
+                          <div className="grid grid-cols-3 gap-2">
+                             {(['fast', 'balanced', 'thinking'] as const).map(m => (
+                               <button 
+                                 key={m}
+                                 onClick={() => setChatSettings(p => ({ ...p, modelMode: m }))}
+                                 className={`py-2 px-1 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${chatSettings.modelMode === m ? 'bg-white text-black border-white' : 'border-white/5 text-white/40 hover:text-white'}`}
+                               >
+                                 {m}
+                               </button>
+                             ))}
+                          </div>
+                       </div>
+                       
+                       <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                             <Globe size={18} className="text-white/40" />
+                             <span className="text-sm font-semibold">{t.settingsSearchGrounding || "Search Grounding"}</span>
+                          </div>
+                          <button 
+                            onClick={() => setChatSettings(p => ({ ...p, enableSearch: !p.enableSearch }))}
+                            className={`w-12 h-6 rounded-full transition-colors relative ${chatSettings.enableSearch ? 'bg-indigo-500' : 'bg-white/10'}`}
+                          >
+                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${chatSettings.enableSearch ? 'right-1' : 'left-1'}`} />
+                          </button>
+                       </div>
+
+                       <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                             <MapPin size={18} className="text-white/40" />
+                             <span className="text-sm font-semibold">{t.settingsLocationIntel || "Location Intelligence"}</span>
+                          </div>
+                          <button 
+                            onClick={() => setChatSettings(p => ({ ...p, enableMaps: !p.enableMaps }))}
+                            className={`w-12 h-6 rounded-full transition-colors relative ${chatSettings.enableMaps ? 'bg-emerald-500' : 'bg-white/10'}`}
+                          >
+                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${chatSettings.enableMaps ? 'right-1' : 'left-1'}`} />
+                          </button>
+                       </div>
+                    </div>
+                  </section>
+
+                  {/* Appearance Section */}
+                  <section>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 px-1">{t.appearance || "Appearance"}</h4>
+                    <div className="space-y-4">
+                       <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                             <Star size={18} className="text-white/40" />
+                             <span className="text-sm font-semibold">Galaxy Background</span>
+                          </div>
+                          <button 
+                            onClick={handleToggleGalaxy}
+                            className={`w-12 h-6 rounded-full transition-colors relative ${theme.galaxyEnabled ? 'bg-indigo-500' : 'bg-white/10'}`}
+                          >
+                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${theme.galaxyEnabled ? 'right-1' : 'left-1'}`} />
+                          </button>
+                       </div>
+
+                       <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-3">
+                             <Snowflake size={18} className="text-white/40" />
+                             <span className="text-sm font-semibold">{t.settingsSnowEffect || "Snow Effect"}</span>
+                          </div>
+                          <button 
+                            onClick={handleToggleSnow}
+                            className={`w-12 h-6 rounded-full transition-colors relative ${theme.snowingEnabled ? 'bg-blue-400' : 'bg-white/10'}`}
+                          >
+                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${theme.snowingEnabled ? 'right-1' : 'left-1'}`} />
+                          </button>
+                       </div>
+                    </div>
+                  </section>
+
+                  {/* Account Section */}
+                  <section>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 px-1">{t.settingsAccount || "Account"}</h4>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold text-white/60">
+                             {user.name.charAt(0)}
+                          </div>
+                          <div>
+                             <p className="text-sm font-bold">{user.name}</p>
+                             <p className="text-[9px] font-black uppercase tracking-widest text-white/20">EduAssist Build v3.1</p>
+                          </div>
+                       </div>
+                       <button onClick={onLogout} className="px-4 py-2 bg-red-500/10 text-red-400 font-bold text-xs rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-all">{t.settingsSignOut || t.logout || "Sign Out"}</button>
+                    </div>
+                  </section>
                 </div>
-              )}
+
+                <div className="mt-12 text-center">
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10">EduAssist AI — Production Build</p>
+                </div>
             </div>
           </div>
         )}
+
         {showKnowledgeBase && <KnowledgeBaseModal onClose={() => setShowKnowledgeBase(false)} onSelectQuestion={(q) => handleSendMessage(q)} t={t} />}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full max-w-4xl mx-auto pb-32">
-          {displayedMessages.map((msg) => (
-            <MessageBubble 
-              key={msg.id} 
-              message={msg} 
-              themeMode={theme.mode} 
-              onPlayAudio={handlePlayAudio}
-              onImageClick={(url, prompt) => setSelectedImage({ url, prompt })}
-              audioState={
-                audioLoadingId === msg.id ? { status: 'loading' } : 
-                activeAudioId === msg.id ? { status: 'playing' } : 
-                null
-              }
-            />
-          ))}
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 w-full max-w-4xl mx-auto pb-48 scrollbar-hide">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-6 animate-in fade-in duration-700 py-20">
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-white">What are you working on?</h2>
+              <p className="text-white/40 max-w-md font-medium">Ask EduAssist AI anything to get started.</p>
+            </div>
+          ) : (
+            displayedMessages.map((msg) => (
+              <MessageBubble 
+                key={msg.id} 
+                message={msg} 
+                onPlayAudio={handlePlayAudio}
+                onEdit={(text) => setChatInput(text)}
+                onRecreate={handleRecreate}
+                onFeedback={handleFeedback}
+                onDetailedFeedback={handleDetailedFeedback}
+                onShare={handleShare}
+                onBranch={handleBranch}
+                onImageClick={(url, prompt) => setSelectedImage({ url, prompt })}
+                audioState={
+                  audioLoadingId === msg.id ? { status: 'loading' } : 
+                  activeAudioId === msg.id ? { status: 'playing' } : 
+                  null
+                }
+                t={t}
+              />
+            ))
+          )}
           <div ref={messagesEndRef} className="h-1" />
         </main>
+
         <InputArea 
           onSend={handleSendMessage} 
           isLoading={isLoading} 
-          placeholder={t.placeholder} 
+          placeholder="Ask anything" 
           mode={inputMode} 
           setMode={setInputMode} 
           chatSettings={chatSettings} 
           setChatSettings={setChatSettings} 
           imageModePlaceholder={t.describeImage} 
+          onOpenKnowledgeBase={() => setShowKnowledgeBase(true)}
           input={chatInput}
           setInput={setChatInput}
           t={t} 
-          themeMode={theme.mode} 
         />
+
         {selectedImage && (
           <ImageModal 
             imageUrl={selectedImage.url} 
             prompt={selectedImage.prompt} 
             onClose={() => setSelectedImage(null)} 
             onRecreate={(prompt) => {
-              setChatInput(prompt);
-              setInputMode('image-gen');
+              handleSendMessage(prompt, [], 'image-gen');
+              setSelectedImage(null);
             }} 
             language={appLanguage} 
           />

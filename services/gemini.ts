@@ -4,17 +4,17 @@ import { Message, Sender, ChatSettings, Attachment, AspectRatio } from "../types
 import { findRelevantKnowledge } from "./knowledgeBase";
 
 /**
- * Creates a fresh instance of the Gemini AI client using the current environment key.
+ * Creates a fresh instance of the AI client using the current environment key.
  */
 const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 /**
- * Checks if a paid API key has been selected in AI Studio.
- * Mandatory for gemini-3-pro-image-preview and other advanced models.
+ * Checks if a paid access token has been selected.
+ * Mandatory for high-fidelity models.
  */
-const ensureApiKeySelected = async () => {
+const ensureAccessTokenSelected = async () => {
   if (typeof window !== 'undefined' && (window as any).aistudio) {
     const aistudio = (window as any).aistudio;
     const hasKey = await aistudio.hasSelectedApiKey();
@@ -142,12 +142,17 @@ export const getChatResponse = async (
 
 // --- Image Generation ---
 
+const SUPPORTED_ASPECT_RATIOS = ['1:1', '3:4', '4:3', '9:16', '16:9'];
+
 export const generateImage = async (
   prompt: string, 
   aspectRatio: AspectRatio = '1:1'
 ): Promise<string> => {
   const ai = getAiClient();
   const model = 'gemini-2.5-flash-image';
+  
+  // Ensure we use a valid aspect ratio supported by the model
+  const validRatio = SUPPORTED_ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : '1:1';
 
   try {
     const response = await ai.models.generateContent({
@@ -157,12 +162,17 @@ export const generateImage = async (
       },
       config: {
         imageConfig: {
-          aspectRatio: aspectRatio as any
+          aspectRatio: validRatio as any
         }
       }
     });
 
-    const parts = response.candidates?.[0]?.content?.parts;
+    const candidate = response.candidates?.[0];
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+      throw new Error(`Generation failed: ${candidate.finishReason}. Try refining your prompt.`);
+    }
+
+    const parts = candidate?.content?.parts;
     if (parts) {
       for (const part of parts) {
         if (part.inlineData && part.inlineData.data) {
@@ -171,36 +181,46 @@ export const generateImage = async (
       }
     }
 
-    throw new Error("Generation completed but no image was returned. Try a more descriptive prompt.");
+    throw new Error("No image was returned. This can happen due to safety filters. Try a different prompt.");
   } catch (error: any) {
-    const errorStr = typeof error === 'string' ? error : JSON.stringify(error);
-    const isPermissionError = errorStr.includes('403') || errorStr.includes('PERMISSION_DENIED');
+    const errorStr = JSON.stringify(error).toLowerCase();
+    const isPermissionError = errorStr.includes('403') || errorStr.includes('permission_denied') || errorStr.includes('not_found');
     
     console.error("Image generation failed:", error);
     
+    // If Flash Image model is unavailable or restricted, try to upgrade to Pro
     if (isPermissionError) {
       try {
-        const proAi = await ensureApiKeySelected();
+        const proAi = await ensureAccessTokenSelected();
         const proResponse = await proAi.models.generateContent({
           model: 'gemini-3-pro-image-preview',
           contents: { parts: [{ text: prompt }] },
-          config: { imageConfig: { aspectRatio: aspectRatio as any, imageSize: '1K' } }
+          config: { 
+            imageConfig: { 
+              aspectRatio: validRatio as any, 
+              imageSize: '1K' 
+            } 
+          }
         });
-        for (const part of proResponse.candidates?.[0]?.content?.parts || []) {
-          if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        
+        const candidate = proResponse.candidates?.[0];
+        const parts = candidate?.content?.parts || [];
+        for (const part of parts) {
+          if (part.inlineData?.data) {
+            return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+          }
         }
+        throw new Error("Pro model generation completed but no image was found.");
       } catch (proError: any) {
         const proErrorStr = JSON.stringify(proError);
-        if (proErrorStr.includes("Requested entity was not found") || proErrorStr.includes("403") || proErrorStr.includes("PERMISSION_DENIED")) {
-          if (typeof window !== 'undefined' && (window as any).aistudio) {
-            await (window as any).aistudio.openSelectKey();
-            throw new Error("API Permission Denied. Please ensure you have selected an API key from a project with billing enabled to generate images.");
-          }
+        if (proErrorStr.includes("Requested entity was not found") || proErrorStr.includes("403")) {
+          throw new Error("Access restricted. Please ensure your project has high-fidelity visual access enabled.");
         }
         throw proError;
       }
     }
-    throw error;
+    
+    throw new Error(error.message || "An unexpected error occurred during image generation.");
   }
 };
 
@@ -229,14 +249,14 @@ export const editImage = async (prompt: string, attachment: Attachment): Promise
         }
       }
     }
-    throw new Error("Image edit failed.");
+    throw new Error("Edit failed. Try a clearer instruction.");
   } catch (error: any) {
     const errorStr = JSON.stringify(error);
     const isPermissionError = errorStr.includes('403') || errorStr.includes('PERMISSION_DENIED');
     
     if (isPermissionError) {
       try {
-        const proAi = await ensureApiKeySelected();
+        const proAi = await ensureAccessTokenSelected();
         const proResponse = await proAi.models.generateContent({
           model: 'gemini-3-pro-image-preview',
           contents: { parts: [{ inlineData: { mimeType: attachment.mimeType, data: attachment.data } }, { text: prompt }] },
@@ -246,11 +266,6 @@ export const editImage = async (prompt: string, attachment: Attachment): Promise
           if (part.inlineData?.data) return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
         }
       } catch (proError: any) {
-        if (JSON.stringify(proError).includes("Requested entity was not found") || JSON.stringify(proError).includes("403")) {
-          if (typeof window !== 'undefined' && (window as any).aistudio) {
-            await (window as any).aistudio.openSelectKey();
-          }
-        }
         throw proError;
       }
     }

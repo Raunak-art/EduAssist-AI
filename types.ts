@@ -30,6 +30,7 @@ export interface Message {
   relatedPrompt?: string;
   attachments?: Attachment[];
   groundingMetadata?: GroundingMetadata;
+  feedback?: 'positive' | 'negative';
 }
 
 export type SessionStatus = 'active' | 'archived' | 'hidden' | 'deleted';
@@ -71,6 +72,7 @@ export interface Theme {
   mode: ThemeMode;
   customImage?: string; // Base64 Data URL
   snowingEnabled?: boolean; // Toggle for snowing effect
+  galaxyEnabled?: boolean; // Toggle for galaxy/star effect
 }
 
 export type Language = 
@@ -83,13 +85,14 @@ export type InputMode = 'text' | 'image-edit' | 'image-gen';
 
 export type ModelMode = 'fast' | 'balanced' | 'thinking';
 
-export type AspectRatio = '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '9:16' | '16:9' | '21:9';
+// Updated to strictly follow supported Nexus (Gemini) image aspect ratios
+export type AspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
 
 export interface ChatSettings {
   modelMode: ModelMode;
   enableSearch: boolean;
   enableMaps: boolean;
-  enableImageEditing: boolean; // Use gemini-2.5-flash-image for image inputs
-  enableAudioResponse: boolean; // Auto-play audio responses
+  enableImageEditing: boolean;
+  enableAudioResponse: boolean;
   imageAspectRatio: AspectRatio;
 }

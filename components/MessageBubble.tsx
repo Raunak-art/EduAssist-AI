@@ -1,16 +1,23 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Bot, User, AlertCircle, RefreshCw, Palette, Volume2, VolumeX, Link as LinkIcon, Play, Pause, Loader2, Square, Key, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, User, AlertCircle, RefreshCw, Palette, Volume2, VolumeX, Link as LinkIcon, Play, Pause, Loader2, Square, Key, ChevronDown, ChevronUp, Copy, Edit2, Check, ThumbsUp, ThumbsDown, Share2, GitBranch, X as CloseIcon } from 'lucide-react';
 import { Message, Sender, ThemeMode } from '../types';
 
 interface MessageBubbleProps {
   message: Message;
   onRetry?: (id: string) => void;
+  onRecreate?: (id: string) => void;
+  onEdit?: (text: string) => void;
   onImageClick?: (url: string, prompt?: string) => void;
   onPlayAudio?: (id: string, text: string) => void;
+  onFeedback?: (id: string, type: 'positive' | 'negative') => void;
+  onDetailedFeedback?: (id: string, feedbackText: string, shouldImprove: boolean) => void;
+  onShare?: (text: string) => void;
+  onBranch?: (id: string) => void;
   audioState?: { status: 'loading' | 'playing' } | null;
   themeMode?: ThemeMode;
+  t?: any;
 }
 
 const CustomAudioPlayer: React.FC<{ src: string; isUser: boolean }> = ({ src, isUser }) => {
@@ -102,8 +109,12 @@ const CustomAudioPlayer: React.FC<{ src: string; isUser: boolean }> = ({ src, is
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, onImageClick, onPlayAudio, audioState, themeMode }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, onRecreate, onEdit, onImageClick, onPlayAudio, onFeedback, onDetailedFeedback, onShare, onBranch, audioState, themeMode, t }) => {
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  
   const isUser = message.sender === Sender.USER;
   const isError = message.isError;
   const hasImage = !!message.image;
@@ -115,34 +126,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
       ? "bg-red-500/20 border-red-500/30 text-white border rounded-[2rem] rounded-tl-sm backdrop-blur-ios saturate-150"
       : "glass-panel text-white rounded-[2rem] rounded-tl-sm ios-shadow saturate-150";
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const getCleanErrorMessage = (raw: string) => {
     try {
       const parsed = JSON.parse(raw);
       if (parsed.error) {
-        if (parsed.error.code === 403 || parsed.error.status === "PERMISSION_DENIED") {
-          return "API Permission Denied. This usually means your API key needs billing enabled or permissions for this model are restricted.";
-        }
         return parsed.error.message || raw;
       }
       return raw;
     } catch {
-      if (raw.includes('403') || raw.includes('PERMISSION_DENIED')) {
-          return "Access Denied. Please ensure your API key has the correct permissions.";
-      }
       return raw;
     }
   };
 
-  const handleFixAccess = async () => {
-    if (typeof window !== 'undefined' && (window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
+  const handleNegativeFeedback = () => {
+    if (onFeedback) onFeedback(message.id, 'negative');
+    setShowFeedbackForm(true);
+  };
+
+  const submitDetailedFeedback = (shouldImprove: boolean) => {
+    if (onDetailedFeedback) {
+      onDetailedFeedback(message.id, feedbackText, shouldImprove);
     }
+    setShowFeedbackForm(false);
+    setFeedbackText('');
   };
 
   return (
     <div className={`flex w-full mb-8 animate-ios-pop ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex max-w-[88%] md:max-w-[70%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-4`}>
-        <div className={`flex-shrink-0 h-11 w-11 rounded-ios flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${
+      <div className={`flex max-w-[88%] md:max-w-[70%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-4 group`}>
+        <div className={`flex-shrink-0 h-11 w-11 rounded-nexus flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${
           isUser 
             ? 'bg-indigo-500' 
             : isError 
@@ -153,7 +171,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
         </div>
 
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full`}>
-          <div className={`px-6 py-4 rounded-[2rem] text-[15px] leading-relaxed relative group ios-shadow ${bubbleClasses}`}>
+          <div className={`px-6 py-4 rounded-nexus text-[15px] leading-relaxed relative ios-shadow ${bubbleClasses}`}>
             {hasAttachments && (
               <div className="flex flex-col gap-3 mb-3">
                 {message.attachments!.map((att, idx) => (
@@ -174,45 +192,30 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
             )}
 
             {isUser ? (
-              <p className="whitespace-pre-wrap">{message.text}</p>
+              <div className="flex flex-col gap-2">
+                <p className="whitespace-pre-wrap">{message.text}</p>
+                <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                  <button onClick={handleCopy} className="p-1.5 hover:bg-white/20 rounded-lg text-white/60 hover:text-white" title="Copy text">
+                    {copied ? <Check size={14} className="text-green-300" /> : <Copy size={14} />}
+                  </button>
+                  {onEdit && (
+                    <button onClick={() => onEdit(message.text)} className="p-1.5 hover:bg-white/20 rounded-lg text-white/60 hover:text-white" title="Edit message">
+                      <Edit2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
             ) : isError ? (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2 text-red-100 font-bold uppercase tracking-widest text-[10px]">
                   <AlertCircle size={14} /> System Error
                 </div>
                 <p className="font-medium text-red-50">{getCleanErrorMessage(message.text)}</p>
-                
-                <div className="flex flex-wrap gap-2">
-                  {(message.text.includes('403') || message.text.includes('PERMISSION_DENIED')) && (
-                    <button 
-                      onClick={handleFixAccess} 
-                      className="px-4 py-2 text-xs font-bold rounded-xl bg-white text-red-600 hover:bg-white/90 transition-all flex items-center gap-2 shadow-lg active:scale-95"
-                    >
-                      <Key size={14} /> Fix Access
-                    </button>
-                  )}
-                  {onRetry && (
-                    <button onClick={() => onRetry(message.id)} className="px-4 py-2 text-xs font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-2">
-                      <RefreshCw size={14} /> Retry
-                    </button>
-                  )}
-                </div>
-
-                <div className="border-t border-white/10 pt-2">
-                   <button 
-                    onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
-                    className="flex items-center gap-1 text-[9px] font-bold text-white/40 hover:text-white/60 uppercase tracking-tighter"
-                   >
-                     {showTechnicalDetails ? <ChevronUp size={10} /> : <ChevronDown size={10} />} Technical Details
-                   </button>
-                   {showTechnicalDetails && (
-                     <div className="mt-2 p-2 bg-black/30 rounded-lg overflow-x-auto">
-                        <code className="text-[10px] font-mono text-red-200/60 block whitespace-pre-wrap">
-                          {message.text}
-                        </code>
-                     </div>
-                   )}
-                </div>
+                {onRetry && (
+                  <button onClick={() => onRetry(message.id)} className="px-4 py-2 text-xs font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-2 w-fit">
+                    <RefreshCw size={14} /> Retry
+                  </button>
+                )}
               </div>
             ) : hasImage ? (
                <div className="space-y-3">
@@ -254,6 +257,97 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
               </button>
             )}
           </div>
+
+          {!isUser && !isError && !message.isStreaming && (
+            <div className="flex flex-col items-start w-full">
+              <div className="flex items-center gap-1 mt-2 px-2 animate-ios-pop opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={handleCopy}
+                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  title="Copy response"
+                >
+                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                </button>
+                
+                {onRecreate && (
+                  <button 
+                    onClick={() => onRecreate(message.id)}
+                    className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                    title="Recreate response"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                )}
+
+                <div className="w-px h-3 bg-white/10 mx-1" />
+
+                <button 
+                  onClick={() => onFeedback && onFeedback(message.id, 'positive')}
+                  className={`p-2 hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'positive' ? 'text-green-400' : 'text-white/40 hover:text-white'}`}
+                  title="Good response"
+                >
+                  <ThumbsUp size={14} fill={message.feedback === 'positive' ? 'currentColor' : 'none'} />
+                </button>
+
+                <button 
+                  onClick={handleNegativeFeedback}
+                  className={`p-2 hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'negative' ? 'text-red-400' : 'text-white/40 hover:text-white'}`}
+                  title="Bad response"
+                >
+                  <ThumbsDown size={14} fill={message.feedback === 'negative' ? 'currentColor' : 'none'} />
+                </button>
+
+                <div className="w-px h-3 bg-white/10 mx-1" />
+
+                <button 
+                  onClick={() => onShare && onShare(message.text)}
+                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  title="Share response"
+                >
+                  <Share2 size={14} />
+                </button>
+
+                <button 
+                  onClick={() => onBranch && onBranch(message.id)}
+                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  title="Branch into new chat"
+                >
+                  <GitBranch size={14} />
+                </button>
+              </div>
+
+              {showFeedbackForm && (
+                <div className="mt-3 w-full max-w-md animate-ios-pop bg-white/5 border border-white/10 rounded-nexus p-4 ios-shadow backdrop-blur-md">
+                   <div className="flex items-center justify-between mb-3">
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Improve this Answer</span>
+                     <button onClick={() => setShowFeedbackForm(false)} className="p-1 hover:bg-white/10 rounded-full text-white/40"><CloseIcon size={14} /></button>
+                   </div>
+                   <textarea 
+                    autoFocus
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Tell us what was wrong or how to make it better..."
+                    className="w-full bg-black/20 border border-white/5 rounded-2xl p-3 text-sm text-white placeholder:text-white/30 resize-none h-24 outline-none focus:ring-1 focus:ring-indigo-500/50"
+                   />
+                   <div className="flex items-center gap-2 mt-3">
+                      <button 
+                        onClick={() => submitDetailedFeedback(false)}
+                        className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+                      >
+                        Submit Feedback
+                      </button>
+                      <button 
+                        onClick={() => submitDetailedFeedback(true)}
+                        className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                      >
+                        <RefreshCw size={12} className="animate-spin-slow" /> Improve Answer
+                      </button>
+                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <span className="text-[10px] mt-2 px-3 font-bold uppercase tracking-widest text-white/40 opacity-80">
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
