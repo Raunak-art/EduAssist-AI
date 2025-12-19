@@ -1,0 +1,8 @@
+{
+  "name": "EduAssist AI",
+  "description": "A responsive, world-class, user-friendly chatbot made by students of The Lexicon International School, Kalyani Nagar to help students of all ages with their studies",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}

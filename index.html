@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>EduAssist AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            borderRadius: {
+              'ios': '2.25rem',
+            },
+            backdropBlur: {
+              'ios': '24px',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Smooth transition for liquid theme colors */
+      @property --liquid-1 { syntax: '<color>'; initial-value: #020617; inherits: false; }
+      @property --liquid-2 { syntax: '<color>'; initial-value: #1e1b4b; inherits: false; }
+      @property --liquid-3 { syntax: '<color>'; initial-value: #312e81; inherits: false; }
+      @property --liquid-4 { syntax: '<color>'; initial-value: #1e293b; inherits: false; }
+
+      :root {
+        --liquid-1: #020617;
+        --liquid-2: #1e1b4b;
+        --liquid-3: #312e81;
+        --liquid-4: #1e293b;
+        --glass-bg: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.15);
+        --glass-text: #ffffff;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+      
+      /* Dynamic iOS Mesh Gradient */
+      .liquid-bg {
+        background-color: var(--liquid-1);
+        background-image: 
+          radial-gradient(at 0% 0%, var(--liquid-2) 0px, transparent 50%),
+          radial-gradient(at 50% 0%, var(--liquid-3) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, var(--liquid-4) 0px, transparent 50%),
+          radial-gradient(at 0% 50%, var(--liquid-3) 0px, transparent 50%),
+          radial-gradient(at 100% 50%, var(--liquid-2) 0px, transparent 50%),
+          radial-gradient(at 50% 100%, var(--liquid-3) 0px, transparent 50%);
+        background-attachment: fixed;
+        transition: --liquid-1 0.8s ease, --liquid-2 0.8s ease, --liquid-3 0.8s ease, --liquid-4 0.8s ease;
+      }
+
+      .glass-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        color: var(--glass-text);
+      }
+      
+      .glass-panel-dark {
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(24px) saturate(160%);
+        -webkit-backdrop-filter: blur(24px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .ios-pill {
+        border-radius: 9999px;
+      }
+
+      .ios-shadow {
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .animate-ios-pop {
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .animate-spin-slow {
+        animation: spin 8s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-50 text-slate-900 antialiased transition-colors duration-300 overflow-hidden">
+    <div id="root"></div>
+  </body>
+</html>
