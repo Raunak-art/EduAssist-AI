@@ -73,6 +73,7 @@ export interface Theme {
   customImage?: string; // Base64 Data URL
   snowingEnabled?: boolean; // Toggle for snowing effect
   galaxyEnabled?: boolean; // Toggle for galaxy/star effect
+  christmasEnabled?: boolean; // Toggle for festive theme
 }
 
 export type Language = 
@@ -95,4 +96,5 @@ export interface ChatSettings {
   enableImageEditing: boolean;
   enableAudioResponse: boolean;
   imageAspectRatio: AspectRatio;
+  systemInstruction?: string;
 }

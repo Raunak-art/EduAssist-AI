@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality, Chat } from "@google/genai";
 import { Message, Sender, ChatSettings, Attachment, AspectRatio } from "../types";
 import { findRelevantKnowledge } from "./knowledgeBase";
@@ -162,6 +163,28 @@ export const getChatResponse = async (
   return { text: fullText, groundingMetadata };
 };
 
+/**
+ * Generates a short, context-aware identity name for the AI based on history.
+ */
+export const getChatIdentity = async (history: Message[]): Promise<string> => {
+  const ai = getAiClient();
+  const lastMessages = history.slice(-3).map(m => `${m.sender}: ${m.text}`).join('\n');
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-lite-latest',
+      contents: `Based on the following conversation, give the AI a short 2-3 word "Persona Name" or "Current Identity" that describes its role right now (e.g., "Math Tutor", "Poetry Guide", "Science Lab", "Tech Assistant"). Output ONLY the 2-3 words.\n\n${lastMessages}`,
+      config: {
+        maxOutputTokens: 10,
+        temperature: 0.5,
+      }
+    });
+    return response.text?.trim() || "EduAssist AI";
+  } catch (e) {
+    return "EduAssist AI";
+  }
+};
+
 // --- Image Generation ---
 
 const SUPPORTED_ASPECT_RATIOS = ['1:1', '3:4', '4:3', '9:16', '16:9'];
@@ -290,12 +313,19 @@ export const editImage = async (prompt: string, attachment: Attachment): Promise
 
 export const generateSpeech = async (text: string, language: string = 'en'): Promise<string> => {
   const ai = getAiClient();
-  const voices: Record<string, string> = { 'en': 'Kore', 'hi': 'Zephyr', 'es': 'Puck' };
-  const voiceName = voices[language] || 'Kore';
+  // Using Puck as it has a friendlier, more upbeat and expressive character
+  const voices: Record<string, string> = { 
+    'en': 'Puck', 
+    'hi': 'Puck', 
+    'es': 'Puck',
+    'fr': 'Puck'
+  };
+  const voiceName = voices[language] || 'Puck';
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text }] }],
+    // Added more descriptive emotional keywords to ensure a friendly delivery
+    contents: [{ parts: [{ text: `Speak this clearly in a very friendly, cheerful, warm, and encouraging tone: ${text}` }] }],
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {

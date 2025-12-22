@@ -1,4 +1,5 @@
 
+// Import React to fix namespace error
 import React, { useEffect, useRef } from 'react';
 
 export const GalaxyBackground: React.FC = () => {
@@ -12,7 +13,7 @@ export const GalaxyBackground: React.FC = () => {
 
     let animationFrameId: number;
     let stars: { x: number; y: number; size: number; opacity: number; twinkle: number; speed: number; color: string }[] = [];
-    let shootingStars: { x: number; y: number; len: number; speed: number; opacity: number }[] = [];
+    let shootingStars: { x: number; y: number; len: number; speed: number; opacity: number; width: number }[] = [];
     
     const starColors = ['#ffffff', '#e0e7ff', '#fef3c7', '#fae8ff'];
     const starCount = 200;
@@ -63,6 +64,12 @@ export const GalaxyBackground: React.FC = () => {
     };
 
     const draw = () => {
+      // Pause drawing if tab is hidden to save resources
+      if (document.visibilityState === 'hidden') {
+        animationFrameId = requestAnimationFrame(draw);
+        return;
+      }
+
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
@@ -88,14 +95,15 @@ export const GalaxyBackground: React.FC = () => {
         }
       });
 
-      // Occasional shooting stars
+      // Occasional shooting stars - Adjusted frequency and size
       if (Math.random() < 0.005 && shootingStars.length < 2) {
         shootingStars.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height * 0.5,
-          len: Math.random() * 80 + 20,
-          speed: Math.random() * 10 + 5,
-          opacity: 1
+          len: Math.random() * 150 + 50, // Increased length
+          speed: Math.random() * 12 + 6,
+          opacity: 1,
+          width: Math.random() * 1.5 + 1.5 // Increased width
         });
       }
 
@@ -103,16 +111,19 @@ export const GalaxyBackground: React.FC = () => {
         ctx.beginPath();
         const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - ss.len, ss.y + ss.len);
         grad.addColorStop(0, `rgba(255, 255, 255, ${ss.opacity})`);
+        grad.addColorStop(0.1, `rgba(200, 220, 255, ${ss.opacity * 0.8})`);
         grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        
         ctx.strokeStyle = grad;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = ss.width; // Thicker lines for better visibility
+        ctx.lineCap = 'round';
         ctx.moveTo(ss.x, ss.y);
         ctx.lineTo(ss.x - ss.len, ss.y + ss.len);
         ctx.stroke();
 
         ss.x += ss.speed;
         ss.y -= ss.speed;
-        ss.opacity -= 0.02;
+        ss.opacity -= 0.015; // Slower fade for longer trails
 
         return ss.opacity > 0 && ss.x < canvas.width + ss.len && ss.y > -ss.len;
       });

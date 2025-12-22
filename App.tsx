@@ -4,6 +4,7 @@ import { ChatInterface } from './components/ChatInterface';
 import { LoginPage } from './components/LoginPage';
 import { LandingPage } from './components/LandingPage';
 import { GalaxyBackground } from './components/GalaxyBackground';
+import { ChristmasBackground } from './components/ChristmasBackground';
 import { User, UserRole, Language, Theme } from './types';
 import { GraduationCap, User as UserIcon, Calendar, BookOpen, Layers, Check, AlertCircle } from 'lucide-react';
 import { TRANSLATIONS } from './services/translations';
@@ -181,7 +182,7 @@ const App: React.FC = () => {
 
   return (
     <>
-      {theme.galaxyEnabled && <GalaxyBackground />}
+      {theme.christmasEnabled ? <ChristmasBackground /> : theme.galaxyEnabled && <GalaxyBackground />}
       
       {view === 'landing' && (
         <LandingPage 

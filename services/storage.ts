@@ -169,8 +169,13 @@ export const storageService = {
       const saved = localStorage.getItem(THEME_KEY);
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    // Default to 'dark' for the pure black request, snowing off, galaxy on
-    return { mode: 'dark', snowingEnabled: false, galaxyEnabled: true };
+    // Set Galaxy Mode as default
+    return { 
+      mode: 'dark', 
+      snowingEnabled: false, 
+      galaxyEnabled: true, 
+      christmasEnabled: false 
+    };
   },
 
   saveTheme: (theme: Theme) => {
@@ -180,10 +185,14 @@ export const storageService = {
   applyTheme: () => {
     const theme = storageService.loadTheme();
     const root = document.documentElement;
-    if (theme.mode === 'dark') {
+    
+    // Reset all
+    root.classList.remove('dark', 'christmas');
+    
+    if (theme.christmasEnabled) {
+      root.classList.add('christmas');
+    } else if (theme.mode === 'dark') {
       root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
     }
   },
 

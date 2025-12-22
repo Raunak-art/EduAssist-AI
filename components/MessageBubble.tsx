@@ -72,27 +72,27 @@ const CustomAudioPlayer: React.FC<{ src: string; isUser: boolean }> = ({ src, is
   };
 
   return (
-    <div className={`flex flex-col gap-2 p-3 rounded-[1.5rem] min-w-[260px] glass-panel transition-all ${isUser ? 'bg-white/20' : ''}`}>
+    <div className={`flex flex-col gap-2 p-3 rounded-[1.5rem] min-w-[260px] glass-panel transition-all ${isUser ? 'bg-white/20' : 'christmas:bg-white'}`}>
       <audio ref={audioRef} src={src} preload="metadata" />
       
       <div className="flex items-center gap-3">
-        <button onClick={togglePlay} className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white shrink-0">
+        <button onClick={togglePlay} className="p-2.5 bg-black/5 christmas:bg-cyan-500/10 hover:bg-black/10 rounded-full transition-colors text-slate-800 christmas:text-cyan-600 shrink-0">
           {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
         </button>
 
         <div className="flex-1 flex flex-col justify-center gap-1.5">
-          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-400 transition-all duration-300" style={{ width: `${(currentTime/duration)*100}%` }} />
+          <div className="w-full h-1 bg-black/10 christmas:bg-cyan-100 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-500 christmas:bg-cyan-500 transition-all duration-300" style={{ width: `${(currentTime/duration)*100}%` }} />
           </div>
-          <div className="flex justify-between text-[10px] text-white/60 font-medium">
+          <div className="flex justify-between text-[10px] text-slate-400 christmas:text-cyan-800 font-black">
             <span>{Math.floor(currentTime/60)}:{Math.floor(currentTime%60).toString().padStart(2, '0')}</span>
             <span>{Math.floor(duration/60)}:{Math.floor(duration%60).toString().padStart(2, '0')}</span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-2 pb-1 border-t border-white/5 pt-2 group">
-        <button onClick={toggleMute} className="text-white/40 hover:text-white transition-colors">
+      <div className="flex items-center gap-2 px-2 pb-1 border-t border-black/5 pt-2 group">
+        <button onClick={toggleMute} className="text-slate-400 christmas:text-cyan-600 hover:text-slate-600 transition-colors">
           {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
         </button>
         <input 
@@ -102,9 +102,43 @@ const CustomAudioPlayer: React.FC<{ src: string; isUser: boolean }> = ({ src, is
           step="0.01" 
           value={volume} 
           onChange={handleVolumeChange}
-          className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-indigo-400"
+          className="flex-1 h-1 bg-black/5 christmas:bg-cyan-50 rounded-full appearance-none cursor-pointer accent-cyan-500"
         />
       </div>
+    </div>
+  );
+};
+
+const CodeBlock = ({ children, inline }: { children: any; inline?: boolean }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const text = String(children).replace(/\n$/, '');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (inline) {
+    return (
+      <code className="px-1.5 py-0.5 rounded-lg bg-black/5 dark:bg-white/10 text-indigo-600 dark:text-indigo-300">
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <div className="relative group/code mb-4">
+      <button
+        onClick={handleCopy}
+        className="absolute right-3 top-3 p-2 rounded-xl bg-black/50 backdrop-blur-md text-white/50 hover:text-white hover:bg-indigo-500/50 opacity-0 group-hover/code:opacity-100 transition-all z-10 border border-white/5"
+        title="Copy code"
+      >
+        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+      </button>
+      <code className="block p-4 rounded-2xl bg-black/5 dark:bg-black/30 border border-black/5 dark:border-white/5 text-xs font-mono overflow-x-auto whitespace-pre scrollbar-hide">
+        {children}
+      </code>
     </div>
   );
 };
@@ -121,10 +155,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
   const hasAttachments = message.attachments && message.attachments.length > 0;
 
   const bubbleClasses = isUser
-    ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-[2rem] rounded-tr-sm shadow-xl shadow-indigo-900/20"
+    ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-[2rem] rounded-tr-sm shadow-xl shadow-indigo-900/20 christmas:from-cyan-500 christmas:to-cyan-600"
     : isError
-      ? "bg-red-500/20 border-red-500/30 text-white border rounded-[2rem] rounded-tl-sm backdrop-blur-ios saturate-150"
-      : "glass-panel text-white rounded-[2rem] rounded-tl-sm ios-shadow saturate-150";
+      ? "bg-red-500/10 border-red-500/30 text-red-700 border rounded-[2rem] rounded-tl-sm backdrop-blur-ios saturate-150"
+      : "glass-panel text-slate-800 dark:text-white christmas:text-cyan-950 rounded-[2rem] rounded-tl-sm ios-shadow saturate-150 christmas:bg-white";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -162,10 +196,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
       <div className={`flex max-w-[88%] md:max-w-[70%] ${isUser ? 'flex-row-reverse' : 'flex-row'} gap-4 group`}>
         <div className={`flex-shrink-0 h-11 w-11 rounded-nexus flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${
           isUser 
-            ? 'bg-indigo-500' 
+            ? 'bg-indigo-500 christmas:bg-cyan-600' 
             : isError 
               ? 'bg-red-500/40 border border-red-500/50' 
-              : 'glass-panel text-indigo-400'
+              : 'glass-panel text-indigo-400 christmas:text-cyan-700 christmas:bg-white'
         }`}>
           {isUser ? <User size={22} className="text-white" /> : isError ? <AlertCircle size={22} className="text-white" /> : hasImage ? <Palette size={22} /> : <Bot size={22} />}
         </div>
@@ -175,15 +209,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
             {hasAttachments && (
               <div className="flex flex-col gap-3 mb-3">
                 {message.attachments!.map((att, idx) => (
-                  <div key={idx} className="rounded-2xl overflow-hidden border border-white/10 bg-black/10">
+                  <div key={idx} className="rounded-2xl overflow-hidden border border-black/5 bg-black/5 dark:border-white/10 dark:bg-black/10">
                     {att.type === 'image' ? (
                        <img src={att.uri} alt="attachment" className="max-h-64 w-full object-cover" />
                     ) : att.type === 'audio' ? (
                        <CustomAudioPlayer src={att.uri} isUser={isUser} />
                     ) : (
                       <div className="p-3 flex items-center gap-3">
-                         <div className="p-2 bg-white/10 rounded-xl"><LinkIcon size={16} className="text-white/60" /></div>
-                         <span className="text-sm font-medium text-white/90 truncate">{att.name || 'File'}</span>
+                         <div className="p-2 bg-black/5 dark:bg-white/10 rounded-xl"><LinkIcon size={16} className="text-slate-400 dark:text-white/60" /></div>
+                         <span className="text-sm font-medium text-slate-800 dark:text-white/90 truncate">{att.name || 'File'}</span>
                       </div>
                     )}
                   </div>
@@ -207,52 +241,51 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
               </div>
             ) : isError ? (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2 text-red-100 font-bold uppercase tracking-widest text-[10px]">
+                <div className="flex items-center gap-2 text-red-600 font-bold uppercase tracking-widest text-[10px]">
                   <AlertCircle size={14} /> System Error
                 </div>
-                <p className="font-medium text-red-50">{getCleanErrorMessage(message.text)}</p>
+                <p className="font-medium text-red-800">{getCleanErrorMessage(message.text)}</p>
                 {onRetry && (
-                  <button onClick={() => onRetry(message.id)} className="px-4 py-2 text-xs font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-2 w-fit">
+                  <button onClick={() => onRetry(message.id)} className="px-4 py-2 text-xs font-bold rounded-xl bg-red-500/10 hover:bg-red-500/20 transition-colors flex items-center gap-2 w-fit">
                     <RefreshCw size={14} /> Retry
                   </button>
                 )}
               </div>
             ) : hasImage ? (
                <div className="space-y-3">
-                 <div className="relative overflow-hidden rounded-[1.5rem] bg-black/20 border border-white/10 min-h-[220px] flex items-center justify-center group/img">
+                 <div className="relative overflow-hidden rounded-[1.5rem] bg-black/5 dark:bg-black/20 border border-black/5 dark:border-white/10 min-h-[220px] flex items-center justify-center group/img">
                     {message.image ? (
                        <img src={message.image} alt="Generated" className="w-full h-auto object-cover cursor-zoom-in transition-transform group-hover/img:scale-[1.02]" onClick={() => onImageClick && onImageClick(message.image!, message.relatedPrompt)} />
                     ) : (
-                       <Loader2 className="animate-spin text-white/40" size={32} />
+                       <Loader2 className="animate-spin text-slate-400" size={32} />
                     )}
                  </div>
                  {message.text && message.text !== "Generated image:" && (
-                     <p className="text-sm text-white/80 italic font-medium">"{message.text}"</p>
+                     <p className="text-sm text-slate-500 dark:text-white/80 italic font-medium">"{message.text}"</p>
                  )}
                </div>
             ) : (
-              <div className="markdown-content prose prose-sm prose-invert max-w-none text-white/95">
+              <div className="markdown-content prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-white/95 christmas:text-cyan-950">
                 <ReactMarkdown
                   components={{
                     p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
-                    code: ({ children, inline }: any) => <code className={`${inline ? 'px-1.5 py-0.5 rounded-lg bg-white/10 text-indigo-300' : 'block p-4 rounded-2xl bg-black/30 border border-white/5 text-xs font-mono mb-4'}`}>{children}</code>,
+                    code: CodeBlock,
                     ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1">{children}</ul>,
-                    li: ({ children }) => <li className="text-white/90">{children}</li>,
+                    li: ({ children }) => <li>{children}</li>,
                     h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-1">{children}</h1>,
                     h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-1">{children}</h2>,
-                    table: ({ children }) => <div className="overflow-x-auto mb-4"><table className="w-full border-collapse border border-white/10">{children}</table></div>,
-                    th: ({ children }) => <th className="border border-white/10 px-4 py-2 bg-white/5 font-bold text-left">{children}</th>,
-                    td: ({ children }) => <td className="border border-white/10 px-4 py-2">{children}</td>
+                    table: ({ children }) => <div className="overflow-x-auto mb-4"><table className="w-full border-collapse border border-black/10 dark:border-white/10">{children}</table></div>,
+                    th: ({ children }) => <th className="border border-black/10 dark:border-white/10 px-4 py-2 bg-black/5 dark:bg-white/5 font-bold text-left">{children}</th>,
+                    td: ({ children }) => <td className="border border-black/10 dark:border-white/10 px-4 py-2">{children}</td>
                   }}
                 >
                   {message.text}
                 </ReactMarkdown>
-                {message.isStreaming && <span className="inline-block w-2.5 h-4.5 ml-1.5 align-middle bg-indigo-400 rounded-sm animate-pulse" />}
+                {message.isStreaming && <span className="inline-block w-2.5 h-4.5 ml-1.5 align-middle bg-indigo-400 christmas:bg-cyan-600 rounded-sm animate-pulse" />}
                 
-                {/* Grounding Metadata Rendering */}
                 {message.groundingMetadata?.groundingChunks && message.groundingMetadata.groundingChunks.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-1">Sources & Information</p>
+                  <div className="mt-6 pt-4 border-t border-black/5 dark:border-white/10 space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30 px-1 christmas:text-cyan-900 font-black">Sources & Information</p>
                     <div className="flex flex-wrap gap-2">
                       {message.groundingMetadata.groundingChunks.map((chunk, idx) => {
                         const link = chunk.web || chunk.maps;
@@ -263,10 +296,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
                             href={link.uri} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] font-bold text-indigo-300 hover:bg-white/10 hover:border-indigo-500/30 transition-all group/link"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 text-[11px] font-bold text-indigo-500 dark:text-indigo-300 hover:bg-black/10 dark:hover:bg-white/10 transition-all group/link christmas:bg-cyan-50 christmas:text-cyan-800 christmas:border-cyan-200"
                           >
-                            {chunk.web ? <Globe size={12} className="group-hover/link:text-white" /> : <MapPin size={12} className="group-hover/link:text-white" />}
-                            <span className="truncate max-w-[140px] group-hover/link:text-white">{link.title || (chunk.web ? 'Website' : 'Location')}</span>
+                            {chunk.web ? <Globe size={12} /> : <MapPin size={12} />}
+                            <span className="truncate max-w-[140px]">{link.title || (chunk.web ? 'Website' : 'Location')}</span>
                           </a>
                         );
                       })}
@@ -279,7 +312,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
             {!isUser && !isError && !hasImage && !message.isStreaming && onPlayAudio && (
               <button 
                 onClick={() => onPlayAudio(message.id, message.text)} 
-                className={`absolute -bottom-3 -right-3 p-2.5 rounded-full glass-panel shadow-lg transition-all hover:scale-110 active:scale-95 group/audio ${audioState?.status === 'playing' ? 'bg-indigo-500 text-white' : 'text-white/60 hover:text-white'}`}
+                className={`absolute -bottom-3 -right-3 p-2.5 rounded-full glass-panel shadow-lg transition-all hover:scale-110 active:scale-95 group/audio christmas:bg-white christmas:text-cyan-700 ${audioState?.status === 'playing' ? 'bg-indigo-500 text-white christmas:bg-cyan-600' : 'text-slate-400 dark:text-white/60 hover:text-slate-800 dark:hover:text-white'}`}
               >
                 {audioState?.status === 'loading' ? <Loader2 size={16} className="animate-spin" /> : audioState?.status === 'playing' ? <Square size={16} fill="currentColor" /> : <Volume2 size={18} />}
               </button>
@@ -291,27 +324,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
               <div className="flex items-center gap-1 mt-2 px-2 animate-ios-pop opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
                   onClick={handleCopy}
-                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800"
                   title="Copy response"
                 >
-                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                 </button>
                 
                 {onRecreate && (
                   <button 
                     onClick={() => onRecreate(message.id)}
-                    className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800"
                     title="Recreate response"
                   >
                     <RefreshCw size={14} />
                   </button>
                 )}
 
-                <div className="w-px h-3 bg-white/10 mx-1" />
+                <div className="w-px h-3 bg-black/5 dark:bg-white/10 mx-1 christmas:bg-cyan-200" />
 
                 <button 
                   onClick={() => onFeedback && onFeedback(message.id, 'positive')}
-                  className={`p-2 hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'positive' ? 'text-green-400' : 'text-white/40 hover:text-white'}`}
+                  className={`p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'positive' ? 'text-green-500' : 'text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800'}`}
                   title="Good response"
                 >
                   <ThumbsUp size={14} fill={message.feedback === 'positive' ? 'currentColor' : 'none'} />
@@ -319,17 +352,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
 
                 <button 
                   onClick={handleNegativeFeedback}
-                  className={`p-2 hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'negative' ? 'text-red-400' : 'text-white/40 hover:text-white'}`}
+                  className={`p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors ${message.feedback === 'negative' ? 'text-red-500' : 'text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800'}`}
                   title="Bad response"
                 >
                   <ThumbsDown size={14} fill={message.feedback === 'negative' ? 'currentColor' : 'none'} />
                 </button>
 
-                <div className="w-px h-3 bg-white/10 mx-1" />
+                <div className="w-px h-3 bg-black/5 dark:bg-white/10 mx-1 christmas:bg-cyan-200" />
 
                 <button 
                   onClick={() => onShare && onShare(message.text)}
-                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800"
                   title="Share response"
                 >
                   <Share2 size={14} />
@@ -337,7 +370,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
 
                 <button 
                   onClick={() => onBranch && onBranch(message.id)}
-                  className="p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-white"
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-slate-400 dark:text-white/40 hover:text-slate-800 dark:hover:text-white christmas:text-cyan-800"
                   title="Branch into new chat"
                 >
                   <GitBranch size={14} />
@@ -345,28 +378,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
               </div>
 
               {showFeedbackForm && (
-                <div className="mt-3 w-full max-w-md animate-ios-pop bg-white/5 border border-white/10 rounded-nexus p-4 ios-shadow backdrop-blur-md">
+                <div className="mt-3 w-full max-w-md animate-ios-pop bg-white border border-slate-200 dark:bg-white/5 dark:border-white/10 rounded-nexus p-4 ios-shadow backdrop-blur-md christmas:border-cyan-200">
                    <div className="flex items-center justify-between mb-3">
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Improve this Answer</span>
-                     <button onClick={() => setShowFeedbackForm(false)} className="p-1 hover:bg-white/10 rounded-full text-white/40"><CloseIcon size={14} /></button>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-white/60 christmas:text-cyan-800">Improve this Answer</span>
+                     <button onClick={() => setShowFeedbackForm(false)} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-slate-400"><CloseIcon size={14} /></button>
                    </div>
                    <textarea 
                     autoFocus
                     value={feedbackText}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     placeholder="Tell us what was wrong or how to make it better..."
-                    className="w-full bg-black/20 border border-white/5 rounded-2xl p-3 text-sm text-white placeholder:text-white/30 resize-none h-24 outline-none focus:ring-1 focus:ring-indigo-500/50"
+                    className="w-full bg-slate-50 border border-slate-100 dark:bg-black/20 dark:border-white/5 rounded-2xl p-3 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 resize-none h-24 outline-none focus:ring-1 focus:ring-indigo-500/50"
                    />
                    <div className="flex items-center gap-2 mt-3">
                       <button 
                         onClick={() => submitDetailedFeedback(false)}
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all"
+                        className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold text-xs transition-all"
                       >
                         Submit Feedback
                       </button>
                       <button 
                         onClick={() => submitDetailedFeedback(true)}
-                        className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                        className="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 christmas:bg-cyan-600"
                       >
                         <RefreshCw size={12} className="animate-spin-slow" /> Improve Answer
                       </button>
@@ -376,7 +409,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRetry, 
             </div>
           )}
 
-          <span className="text-[10px] mt-2 px-3 font-bold uppercase tracking-widest text-white/40 opacity-80">
+          <span className="text-[10px] mt-2 px-3 font-bold uppercase tracking-widest text-slate-400 dark:text-white/40 christmas:text-cyan-900 font-black">
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
